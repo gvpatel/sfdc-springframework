@@ -1,0 +1,467 @@
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+<beans>
+<bean id="dbDataSource"
+      class="org.apache.commons.dbcp.BasicDataSource"
+      destroy-method="close">
+    <property name="driverClassName" value="oracle.jdbc.driver.OracleDriver"/>
+    <property name="url" value="#DBCONNECTSTRING#"/>
+    <property name="username" value="#DBUSERNAME#"/>
+    <property name="password" value=#DBPASSWORD#/>
+</bean>
+<bean id="queryAccountAll"
+      class="com.salesforce.dataloader.dao.database.DatabaseConfig"
+      singleton="true">
+    <property name="sqlConfig" ref="queryAccountAllSql"/>
+    <property name="dataSource" ref="dbDataSource"/>
+</bean>
+<bean id="queryAccount"
+      class="com.salesforce.dataloader.dao.database.DatabaseConfig"
+      singleton="true">
+    <property name="sqlConfig" ref="queryAccountSql"/>
+    <property name="dataSource" ref="dbDataSource"/>
+</bean>
+<bean id="queryProduct"
+      class="com.salesforce.dataloader.dao.database.DatabaseConfig"
+      singleton="true">
+    <property name="sqlConfig" ref="queryProductSql"/>
+    <property name="dataSource" ref="dbDataSource"/>
+</bean>
+<bean id="insertAccount"
+      class="com.salesforce.dataloader.dao.database.DatabaseConfig"
+      singleton="true">
+    <property name="sqlConfig" ref="insertAccountSql"/>
+    <property name="dataSource" ref="dbDataSource"/>
+</bean>
+
+<bean id="insertProduct"
+      class="com.salesforce.dataloader.dao.database.DatabaseConfig"
+      singleton="true">
+    <property name="sqlConfig" ref="insertProductSql"/>
+    <property name="dataSource" ref="dbDataSource"/>
+</bean>
+
+<bean id="insertPriceBook"
+      class="com.salesforce.dataloader.dao.database.DatabaseConfig"
+      singleton="true">
+    <property name="sqlConfig" ref="insertPriceBookSql"/>
+    <property name="dataSource" ref="dbDataSource"/>
+</bean>
+
+<bean id="insertPriceBookEntry"
+      class="com.salesforce.dataloader.dao.database.DatabaseConfig"
+      singleton="true">
+    <property name="sqlConfig" ref="insertPriceBookEntrySql"/>
+    <property name="dataSource" ref="dbDataSource"/>
+</bean>
+
+<bean id="upsertPriceBookEntry"
+      class="com.salesforce.dataloader.dao.database.DatabaseConfig"
+      singleton="true">
+    <property name="sqlConfig" ref="upsertPriceBookEntrySql"/>
+    <property name="dataSource" ref="dbDataSource"/>
+</bean>
+
+<bean id="upsertRootAsset"
+      class="com.salesforce.dataloader.dao.database.DatabaseConfig"
+      singleton="true">
+    <property name="sqlConfig" ref="upsertRootAssetSql"/>
+    <property name="dataSource" ref="dbDataSource"/>
+</bean>
+
+<bean id="upsertChildAsset"
+      class="com.salesforce.dataloader.dao.database.DatabaseConfig"
+      singleton="true">
+    <property name="sqlConfig" ref="upsertChildAssetSql"/>
+    <property name="dataSource" ref="dbDataSource"/>
+</bean>
+
+
+<bean id="insertStgRootAsset"
+      class="com.salesforce.dataloader.dao.database.DatabaseConfig"
+      singleton="true">
+    <property name="sqlConfig" ref="insertStgRootAssetSql"/>
+    <property name="dataSource" ref="dbDataSource"/>
+</bean>
+
+
+
+
+
+
+
+
+
+<bean id="updateAccount"
+      class="com.salesforce.dataloader.dao.database.DatabaseConfig"
+      singleton="true">
+    <property name="sqlConfig" ref="updateAccountSql"/>
+    <property name="dataSource" ref="dbDataSource"/>
+</bean>
+<bean id="deleteAccountAll"
+      class="com.salesforce.dataloader.dao.database.DatabaseConfig"
+      singleton="true">
+    <property name="sqlConfig" ref="deleteAccountAllSql"/>
+    <property name="dataSource" ref="dbDataSource"/>
+</bean>
+<bean id="queryAccountAllSql"
+      class="com.salesforce.dataloader.dao.database.SqlConfig" singleton="true">
+    <property name="sqlString">
+        <value>
+            SELECT ACCOUNT_NAME, BUSINESS_PHONE, SFDC_ACCOUNT_ID, ACCOUNT_EXT_ID, ANNUAL_REVENUE, LAST_UPDATED, ACCOUNT_NUMBER
+            FROM TableOwner.Accounts
+        </value>
+    </property>
+    <property name="columnNames">
+        <list>
+            <value>account_name</value>
+            <value>business_phone</value>
+            <value>sfdc_account_id</value>
+            <value>account_ext_id</value>
+            <value>annual_revenue</value>
+            <value>last_updated</value>
+            <value>account_number</value>
+        </list>
+    </property>
+</bean>
+<bean id="queryAccountSql"
+      class="com.salesforce.dataloader.dao.database.SqlConfig" singleton="true">
+    <property name="sqlString">
+        <value>
+            SELECT NAME, X_NUM_OF_ATTORNEYS, INTEGRATION_ID FROM SIEBEL.S_ORG_EXT
+            WHERE INTEGRATION_ID IN ( 'urn:ecm:1000000GX','urn:ecm:10000001S','urn:ecm:100000032','urn:ecm:10000003A')
+        </value>
+    </property>
+    <property name="columnNames">
+        <list>
+            <value>NAME</value>
+            <value>X_NUM_OF_ATTORNEYS</value>
+            <value>INTEGRATION_ID</value>           
+        </list>
+    </property>
+    <property name="sqlParams">
+        <map>
+            <entry key="process.lastRunDate" value="java.sql.Timestamp"/>
+        </map>
+    </property>
+</bean>
+<!--- this is for Querying products in Siebel -->
+<bean id="queryProductSql"
+      class="com.salesforce.dataloader.dao.database.SqlConfig" singleton="true">
+    <property name="sqlString">
+        <value>
+            SELECT   /*+ PARALLEL(auto) */  
+			 DISTINCT D.NAME AS NAME, D.INTEGRATION_ID INTEGRATION_ID, D.DESC_TEXT DESC_TEXT
+			 FROM SIEBEL.S_DOC_AGREE A, SIEBEL.S_ASSET B,
+			 SIEBEL.S_ORG_EXT C , SIEBEL.S_PROD_INT D, SIEBEL.S_BU E
+			 WHERE A.ROW_ID = B.cur_agree_id(+)
+			 AND A.TARGET_OU_ID = C.ROW_ID
+			 AND B.PROD_ID = D.ROW_ID (+)
+			 AND A.BU_ID = E.ROW_ID
+			 AND E.NAME = 'USA'
+			 AND A.AGREE_CD = 'Service Level Agreement'
+			 AND A.CREATED > SYSDATE - 2000
+			 AND C.INTEGRATION_ID IN ( 'urn:ecm:1000000GX','urn:ecm:10000001S','urn:ecm:100000032','urn:ecm:10000003A')
+		     AND D.NAME IS NOT NULL
+        </value>
+    </property>
+    <property name="columnNames">
+        <list>
+            <value>NAME</value>
+            <value>INTEGRATION_ID</value>
+            <value>DESC_TEXT</value>           
+        </list>
+    </property>
+    <property name="sqlParams">
+        <map>
+            <entry key="process.lastRunDate" value="java.sql.Timestamp"/>
+        </map>
+    </property>
+</bean>
+
+<!--- this is for updating Customers in Oracle based on SFDC Accounts -->
+<bean id="updateAccountSql"
+      class="com.salesforce.dataloader.dao.database.SqlConfig" singleton="true">
+    <property name="sqlString">
+        <value>
+            update TableOwner.Accounts accounts
+               set accounts.account_name = @account_name@,
+                   accounts.business_phone = @business_phone@,
+                   accounts.sfdc_account_id = @sfdc_account_id@,
+                   accounts.annual_revenue = @annual_revenue@,
+                   accounts.account_number = @account_number@
+            where
+                   accounts.ACCOUNT_EXT_ID = @account_ext_id@
+        </value>
+    </property>
+    <property name="sqlParams">
+        <map>
+            <entry key="account_name"    value="java.lang.String"/>
+            <entry key="business_phone"  value="java.lang.String"/>
+            <entry key="sfdc_account_id" value="java.lang.String"/>
+            <entry key="annual_revenue"  value="java.lang.Double"/>
+            <entry key="account_ext_id"  value="java.lang.String"/>
+            <entry key="account_number"  value="java.lang.String"/>
+        </map>
+    </property>
+</bean>
+
+<!--- this is for Inserting account in staging -->
+<bean id="insertAccountSql"
+      class="com.salesforce.dataloader.dao.database.SqlConfig" singleton="true">
+    <property name="sqlString">
+        <value>
+           MERGE INTO TEMP_SF_ACOUNT
+           USING
+           (SELECT 1 "one" FROM dual) 
+           ON
+           (TEMP_SF_ACOUNT.OC_PGUID =  @oc_pguid@)
+		   WHEN matched THEN
+		    UPDATE SET SFDC_ID = @sfdc_id@ WHERE OC_PGUID = @oc_pguid@
+           WHEN NOT matched THEN
+            INSERT (SFDC_ID, NAME, NUM_ATT, OC_PGUID)
+            VALUES (@sfdc_id@, @name@, @num_att@, @oc_pguid@)
+        </value>
+    </property>
+    <property name="sqlParams">
+        <map>
+            <entry key="sfdc_id"    value="java.lang.String"/>
+            <entry key="name"  value="java.lang.String"/>
+            <entry key="num_att" value="java.lang.String"/>
+            <entry key="oc_pguid"  value="java.lang.String"/>         
+        </map>
+    </property>
+</bean>
+
+<!--- this is for Inserting products in staging -->
+
+<bean id="insertProductSql"
+      class="com.salesforce.dataloader.dao.database.SqlConfig" singleton="true">
+    <property name="sqlString">
+        <value>
+           MERGE INTO LN_STG_SFDC_PRODUCT
+           USING
+           (SELECT 1 "one" FROM dual) 
+           ON
+           (LN_STG_SFDC_PRODUCT.PRODUCT_PGUID =  @product_pguid@)
+		   WHEN matched THEN
+		     UPDATE SET SFDC_ID = @sfdc_id@, NAME = @name@ WHERE PRODUCT_PGUID = @product_pguid@
+           WHEN NOT matched THEN
+            INSERT (SFDC_ID, NAME, PRODUCT_PGUID)
+            VALUES (@sfdc_id@, @name@, @product_pguid@)
+        </value>
+    </property>
+    <property name="sqlParams">
+        <map>
+            <entry key="sfdc_id"    value="java.lang.String"/>
+            <entry key="name"  value="java.lang.String"/>           
+            <entry key="product_pguid"  value="java.lang.String"/>         
+        </map>
+    </property>
+</bean>
+
+<!--- this is for Inserting pricebook in staging -->
+
+<bean id="insertPriceBookSql"
+      class="com.salesforce.dataloader.dao.database.SqlConfig" singleton="true">
+    <property name="sqlString">
+        <value>
+           MERGE INTO LN_STG_SFDC_PRICEBOOK
+           USING
+           (SELECT 1 "one" FROM dual) 
+           ON
+           (LN_STG_SFDC_PRICEBOOK.PRICEBOOK_ID =  @pricebook_id@)
+           WHEN NOT matched THEN
+            INSERT (PRICEBOOK_ID, NAME)
+            VALUES (@pricebook_id@, @name@)
+        </value>
+    </property>
+    <property name="sqlParams">
+        <map>
+            <entry key="pricebook_id"    value="java.lang.String"/>
+            <entry key="name"  value="java.lang.String"/> 
+        </map>
+    </property>
+</bean>
+
+<!--- this is for Inserting pricebookEntry in staging -->
+
+<bean id="insertPriceBookEntrySql"
+      class="com.salesforce.dataloader.dao.database.SqlConfig" singleton="true">
+    <property name="sqlString">
+        <value>
+           MERGE INTO LN_STG_SFDC_PRICEBOOK_ENTRY
+           USING
+           (SELECT 1 "one" FROM dual) 
+           ON
+           (LN_STG_SFDC_PRICEBOOK_ENTRY.PRICEBOOK_ID =  @pricebook_id@
+		     AND LN_STG_SFDC_PRICEBOOK_ENTRY.PRODUCT_ID = @product_id@
+			 AND LN_STG_SFDC_PRICEBOOK_ENTRY.CURRENCY = @currency@ )
+           WHEN NOT matched THEN
+            INSERT (PRICEBOOK_ID, PRODUCT_ID, CURRENCY)
+            VALUES (@pricebook_id@, @product_id@, @currency@)
+        </value>
+    </property>
+    <property name="sqlParams">
+        <map>
+            <entry key="pricebook_id"    value="java.lang.String"/>
+            <entry key="product_id"  value="java.lang.String"/> 
+			<entry key="currency"  value="java.lang.String"/> 
+        </map>
+    </property>
+</bean>
+
+<bean id="upsertPriceBookEntrySql"
+      class="com.salesforce.dataloader.dao.database.SqlConfig" singleton="true">
+    <property name="sqlString">
+        <value>
+             SELECT A.SFDC_ID,B.PRICEBOOK_ID, 10 as UNITPRICE FROM LN_STG_SFDC_PRODUCT A
+             ,LN_STG_SFDC_PRICEBOOK B
+             MINUS
+             SELECT PRODUCT_ID, PRICEBOOK_ID, 10 as UNITPRICE FROM LN_STG_SFDC_PRICEBOOK_ENTRY
+             ORDER BY 2
+        </value>
+    </property>
+    <property name="columnNames">
+        <list>
+            <value>SFDC_ID</value>
+            <value>PRICEBOOK_ID</value> 
+			<value>UNITPRICE</value> 
+        </list>
+    </property>
+    <property name="sqlParams">
+        <map>
+            <entry key="process.lastRunDate" value="java.sql.Timestamp"/>
+        </map>
+    </property>
+</bean>
+
+<bean id="upsertRootAssetSql"
+      class="com.salesforce.dataloader.dao.database.SqlConfig" singleton="true">
+    <property name="sqlString">
+        <value>
+              SELECT  /*+ PARALLEL(auto) */  
+				 DISTINCT F.SFDC_ID ,
+				 A.AGREE_NUM||'-'||A.REV_NUM AS ASSET_NAME, A.STAT_CD,  A.BL_CURCY_CD,A.X_TERM_TYPE, A.X_TRIAL_FLG, A.EFF_START_DT, A.EFF_END_DT,
+				 A.AGREE_NUM||'-'||A.REV_NUM AS EXTERN_ID
+				 FROM SIEBEL.S_DOC_AGREE A, SIEBEL.S_ASSET B,
+				 SIEBEL.S_ORG_EXT C , SIEBEL.S_PROD_INT D, SIEBEL.S_BU E,
+				 TEMP_SF_ACOUNT F
+				 WHERE A.ROW_ID = B.cur_agree_id(+)
+				 AND A.TARGET_OU_ID = C.ROW_ID
+				 AND B.PROD_ID = D.ROW_ID (+)
+				 AND A.BU_ID = E.ROW_ID
+				 AND C.INTEGRATION_ID = F.OC_PGUID
+				 AND E.NAME = 'USA'
+				 AND A.AGREE_CD = 'Service Level Agreement'
+				 AND A.CREATED > SYSDATE - 2000
+				 AND F.SFDC_ID IS NOT NULL
+				 AND C.INTEGRATION_ID IN ( 'urn:ecm:1000000GX','urn:ecm:10000001S','urn:ecm:100000032','urn:ecm:10000003A') 
+        </value>
+    </property>
+    <property name="columnNames">
+        <list>
+            <value>SFDC_ID</value>
+            <value>ASSET_NAME</value> 
+			<value>STAT_CD</value> 
+			<value>BL_CURCY_CD</value> 
+		    <value>X_TERM_TYPE</value>
+            <value>X_TRIAL_FLG</value> 
+			<value>EFF_START_DT</value> 
+			<value>EFF_END_DT</value>
+            <value>EXTERN_ID</value>				
+        </list>
+    </property>
+    <property name="sqlParams">
+        <map>
+            <entry key="process.lastRunDate" value="java.sql.Timestamp"/>
+        </map>
+    </property>
+</bean>
+
+
+<bean id="upsertChildAssetSql"
+      class="com.salesforce.dataloader.dao.database.SqlConfig" singleton="true">
+    <property name="sqlString">
+        <value>
+                 SELECT  /*+ PARALLEL(auto) */  
+				 F.SFDC_ID SFDC_OC_ID, G.SFDC_ID SFDC_PROD_ID,
+				 H.ID ROOT_ASSET_ID,  H.ID PARENT_ASSET_ID, A.BL_CURCY_CD, B.START_DT, B.END_DT,
+				 B.ASSET_NUM EXTERN_ID, b.STATUS_CD, b.INSTALL_DT, D.NAME AS ASSET_NAME
+				 FROM SIEBEL.S_DOC_AGREE A, SIEBEL.S_ASSET B,
+				 SIEBEL.S_ORG_EXT C , SIEBEL.S_PROD_INT D, SIEBEL.S_BU E,
+				 TEMP_SF_ACOUNT F, LN_STG_SFDC_PRODUCT G,LN_STG_SFDC_ROOT_ASSET H
+				 WHERE A.ROW_ID = B.cur_agree_id(+)
+				 AND A.TARGET_OU_ID = C.ROW_ID
+				 AND B.PROD_ID = D.ROW_ID (+)
+				 AND A.BU_ID = E.ROW_ID
+				 AND C.INTEGRATION_ID = F.OC_PGUID
+				 AND D.INTEGRATION_ID = G.PRODUCT_PGUID
+                 AND EXTERN_ID = A.AGREE_NUM||'-'||A.REV_NUM
+				 AND F.SFDC_ID IS NOT NULL
+				 AND E.NAME = 'USA'
+				 AND A.AGREE_CD = 'Service Level Agreement'
+				 AND A.CREATED > SYSDATE - 2000
+				 AND C.INTEGRATION_ID IN ( 'urn:ecm:1000000GX','urn:ecm:10000001S','urn:ecm:100000032','urn:ecm:10000003A') 
+        </value>
+    </property>
+    <property name="columnNames">
+        <list>
+            <value>SFDC_OC_ID</value>
+            <value>SFDC_PROD_ID</value> 
+			<value>ROOT_ASSET_ID</value> 
+			<value>PARENT_ASSET_ID</value> 
+		    <value>BL_CURCY_CD</value>
+            <value>START_DT</value> 
+			<value>END_DT</value> 
+			<value>EXTERN_ID</value>
+            <value>STATUS_CD</value>
+            <value>INSTALL_DT</value>
+            <value>ASSET_NAME</value>			
+        </list>
+    </property>
+    <property name="sqlParams">
+        <map>
+            <entry key="process.lastRunDate" value="java.sql.Timestamp"/>
+        </map>
+    </property>
+</bean>
+
+
+<!--- this is for Inserting pricebook in staging -->
+
+<bean id="insertStgRootAssetSql"
+      class="com.salesforce.dataloader.dao.database.SqlConfig" singleton="true">
+    <property name="sqlString">
+        <value>
+           MERGE INTO LN_STG_SFDC_ROOT_ASSET
+           USING
+           (SELECT 1 "one" FROM dual) 
+           ON
+           (LN_STG_SFDC_ROOT_ASSET.EXTERN_ID =  @extern_id@)
+		   WHEN matched THEN
+		    UPDATE SET ID = @Id@, SF_OC_ID = @sf_oc_id@ WHERE EXTERN_ID = @extern_id@
+           WHEN NOT matched THEN
+            INSERT (ID, SF_OC_ID,EXTERN_ID)
+            VALUES (@Id@, @sf_oc_id@, @extern_id@)
+        </value>
+    </property>
+    <property name="sqlParams">
+        <map>
+            <entry key="Id"  value="java.lang.String"/>
+            <entry key="sf_oc_id"  value="java.lang.String"/> 
+			<entry key="extern_id"  value="java.lang.String"/> 
+        </map>
+    </property>
+</bean>
+
+
+
+<bean id="deleteAccountAllSql"
+      class="com.salesforce.dataloader.dao.database.SqlConfig" singleton="true">
+    <property name="sqlString">
+        <value>
+            DELETE FROM TableOwner.Accounts
+        </value>
+    </property>
+</bean>
+</beans>
